@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html ng-app="myApp">
+    <head>
+        <title>Node Fail</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular.min.js"></script>
+        <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+        <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+        <script>
+            var app = angular.module("myApp", []);
+            
+            app.factory('socket', function ($rootScope) {
+                var socket = io.connect();
+                return {
+                    on: function (eventName, callback) {
+                        socket.on(eventName, function () {  
+                            var args = arguments;
+                            $rootScope.$apply(function () {
+                                callback.apply(socket, args);
+                            });
+                        });
+                    },
+                    emit: function (eventName, data, callback) {
+                        socket.emit(eventName, data, function () {
+                            var args = arguments;
+                            $rootScope.$apply(function () {
+                                if (callback) {
+                                    callback.apply(socket, args);
+                                }
+                            });
+                        })
+                    }
+                };
+            });
+            
+            app.controller("myCtrl", function($scope, socket) {
+                $scope.nameText = null;
+                $scope.messageText = null;
+                $scope.messages = [];
+                
+                $scope.sendMessage = function () {
+                    $scope.message = {
+                        name: $scope.name,
+                        msg: $scope.messageText
+                    }
+                    socket.emit('player move', $scope.message);
+                    $scope.messageText = null;
+                };
+                
+                $scope.setName = function () {
+                    $scope.name = $scope.nameText;
+                };
+                
+                socket.on('updatePlayer', function (msg) {
+                    $scope.messages.push(msg);
+                }); 
+            });
+        </script>
+    </head>
+    <body ng-controller="myCtrl">
+        <nav class="navbar navbar-inverse"></nav>
+        <div class="container">
+            <div class="jumbotron">
+                <h3>Kyle's Messaging App</h3>
+                <h5 ng-show="name">Hello {{name}}</h5>
+            </div>
+            <div class="input-group" class="form-control" ng-show='!name'>
+                <input type="text" class="form-control" placeholder="Enter your name" ng-model="nameText" />
+                <span class="input-group-btn">
+                    <button class="btn btn-primary" ng-click="setName()" ng-disabled="!nameText">Submit</button>
+                </span>
+            </div>
+            <br />
+            <div class="input-group" ng-show="name">
+                <input type="text" class="form-control" placeholder="Enter your message" ng-model="messageText" />
+                <span class="input-group-btn">
+                    <button class="btn btn-primary" ng-click="sendMessage()" ng-disabled="!messageText">Send</button>
+                </span>
+            </div>
+            <br />
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <p ng-repeat="message in messages"><strong>{{message.name}}:</strong>&nbsp;{{message.msg}}</p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
